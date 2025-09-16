@@ -50,12 +50,12 @@ class SingleScreenshotSelector:
         self.canvas.create_text(
             self.screenshot.width // 2, 30,
             text="ドラッグして範囲を選択 (ESCでキャンセル)",
-            fill="white", font=("Arial", 16, "bold")
+            fill="white", font=("Arial", 22, "bold")
         )
         self.canvas.create_text(
             self.screenshot.width // 2, 32,
             text="ドラッグして範囲を選択 (ESCでキャンセル)",
-            fill="black", font=("Arial", 16, "bold")
+            fill="black", font=("Arial", 22, "bold")
         )
     
     def on_press(self, event):
@@ -157,12 +157,12 @@ class MultiScreenshotSelector:
         # 新しいテキストを表示
         self.canvas.create_text(
             self.screenshot.width // 2, 30,
-            text=text, fill="white", font=("Arial", 14, "bold"),
+            text=text, fill="white", font=("Arial", 20, "bold"),
             tags="instruction"
         )
         self.canvas.create_text(
             self.screenshot.width // 2, 32,
-            text=text, fill="black", font=("Arial", 14, "bold"),
+            text=text, fill="black", font=("Arial", 20, "bold"),
             tags="instruction"
         )
     
@@ -302,7 +302,7 @@ class ImageClickerGUIv015:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("画像クリックツール v0.15")
-        self.root.geometry("900x750")
+        self.root.geometry("1260x1050")
         
         # ImageClickerインスタンス
         self.clicker = ImageClicker(confidence=0.8)
@@ -376,7 +376,7 @@ class ImageClickerGUIv015:
         info_frame = ttk.LabelFrame(parent, text="📋 基本機能の使い方", padding="10")
         info_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        info_text = tk.Text(info_frame, height=4, wrap=tk.WORD)
+        info_text = tk.Text(info_frame, height=6, wrap=tk.WORD)
         info_text.pack(fill=tk.X)
         info_text.insert(tk.END, "【STEP1】 スクショボタンをクリック\n")
         info_text.insert(tk.END, "【STEP2】 3秒後に撮影される\n")
@@ -392,7 +392,7 @@ class ImageClickerGUIv015:
             screenshot_frame,
             text="📷 スクリーンショットを撮る",
             command=self.take_screenshot,
-            width=30
+            width=42
         ).pack(side=tk.LEFT, padx=5)
         
         ttk.Label(screenshot_frame, text="※ 3秒後に撮影 → ドラッグで赤枠選択", foreground="red").pack(side=tk.LEFT, padx=10)
@@ -405,7 +405,7 @@ class ImageClickerGUIv015:
         scrollbar = ttk.Scrollbar(list_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=8)
+        self.listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=11)
         self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.listbox.yview)
         
@@ -417,14 +417,14 @@ class ImageClickerGUIv015:
             list_buttons,
             text="🔄 更新",
             command=self.refresh_image_list,
-            width=10
+            width=14
         ).pack(side=tk.LEFT, padx=2)
         
         ttk.Button(
             list_buttons,
             text="🗑️ 削除",
             command=self.delete_image,
-            width=10
+            width=14
         ).pack(side=tk.LEFT, padx=2)
         
         # クリック機能
@@ -455,7 +455,7 @@ class ImageClickerGUIv015:
             click_frame,
             text="🖱️ 選択した画像をクリック",
             command=self.click_selected_image,
-            width=30
+            width=42
         )
         click_button.grid(row=1, column=0, columnspan=3, pady=10)
     
@@ -465,7 +465,7 @@ class ImageClickerGUIv015:
         info_frame = ttk.LabelFrame(parent, text="📋 複数選択の使い方", padding="10")
         info_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        info_text = tk.Text(info_frame, height=5, wrap=tk.WORD)
+        info_text = tk.Text(info_frame, height=7, wrap=tk.WORD)
         info_text.pack(fill=tk.X)
         info_text.insert(tk.END, "【STEP1】 選択数とベース名を設定\n")
         info_text.insert(tk.END, "【STEP2】 複数範囲選択ボタンをクリック\n") 
@@ -486,7 +486,7 @@ class ImageClickerGUIv015:
             from_=2,
             to=8,
             textvariable=self.multi_count_var,
-            width=10
+            width=14
         )
         multi_spinbox.grid(row=0, column=1, padx=5)
         
@@ -501,14 +501,14 @@ class ImageClickerGUIv015:
             settings_frame,
             text="📷 複数範囲を選択して保存",
             command=self.take_multiple_screenshots,
-            width=30
+            width=42
         ).grid(row=1, column=0, columnspan=4, pady=10)
         
         # 結果表示
         result_frame = ttk.LabelFrame(parent, text="📋 選択結果", padding="10")
         result_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        self.multi_result_text = scrolledtext.ScrolledText(result_frame, height=10, width=50)
+        self.multi_result_text = scrolledtext.ScrolledText(result_frame, height=14, width=70)
         self.multi_result_text.pack(fill=tk.BOTH, expand=True)
     
     def setup_workflow_tab(self, parent):
@@ -529,7 +529,7 @@ class ImageClickerGUIv015:
         steps_frame = ttk.LabelFrame(parent, text="📝 操作手順（超シンプル）", padding="10")
         steps_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        steps_text = tk.Text(steps_frame, height=4, wrap=tk.WORD, background="#ffffcc")
+        steps_text = tk.Text(steps_frame, height=6, wrap=tk.WORD, background="#ffffcc")
         steps_text.pack(fill=tk.X)
         steps_text.insert(tk.END, "【STEP1】 ワークフロー名を入力して記録開始\n")
         steps_text.insert(tk.END, "【STEP2】 📸スクショ＋クリックで1つ目の画像（自動でクリック操作も追加）\n")
@@ -557,7 +557,7 @@ class ImageClickerGUIv015:
             control_frame,
             text="⏺️ 記録開始",
             command=self.toggle_recording,
-            width=15
+            width=21
         )
         self.record_button.grid(row=0, column=0, padx=5)
         
@@ -565,7 +565,7 @@ class ImageClickerGUIv015:
             control_frame,
             text="📸 スクショ＋クリック",
             command=self.workflow_screenshot_and_click,
-            width=18
+            width=25
         ).grid(row=0, column=1, padx=5)
         
         ttk.Label(control_frame, text="待機時間(秒):").grid(row=1, column=0, padx=5, pady=5)
@@ -577,7 +577,7 @@ class ImageClickerGUIv015:
             to=10.0,
             increment=0.5,
             textvariable=self.wait_time_var,
-            width=10
+            width=14
         )
         wait_spinbox.grid(row=1, column=1, padx=5, pady=5)
         
@@ -585,7 +585,7 @@ class ImageClickerGUIv015:
             control_frame,
             text="⏸️ 待機追加",
             command=self.add_workflow_wait,
-            width=15
+            width=21
         ).grid(row=1, column=2, padx=5, pady=5)
         
         # ワークフロー管理
@@ -615,7 +615,7 @@ class ImageClickerGUIv015:
         workflow_frame = ttk.LabelFrame(parent, text="📋 記録されたワークフロー", padding="10")
         workflow_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        self.workflow_text = scrolledtext.ScrolledText(workflow_frame, height=8, width=50)
+        self.workflow_text = scrolledtext.ScrolledText(workflow_frame, height=11, width=70)
         self.workflow_text.pack(fill=tk.BOTH, expand=True)
         
         # 実行ボタン
@@ -626,7 +626,7 @@ class ImageClickerGUIv015:
             execute_frame,
             text="▶️ ワークフロー実行",
             command=self.execute_workflow,
-            width=20
+            width=28
         ).pack(side=tk.LEFT, padx=5)
         
         # 初期化
@@ -663,7 +663,7 @@ class ImageClickerGUIv015:
             # ファイル名入力ダイアログ
             dialog = tk.Toplevel(self.root)
             dialog.title("保存")
-            dialog.geometry("300x100")
+            dialog.geometry("420x140")
             
             ttk.Label(dialog, text="ファイル名:").pack(pady=5)
             
@@ -1002,14 +1002,10 @@ class ImageClickerGUIv015:
             else:
                 self.status_var.set(f"❌ 画像が見つかりません: {image_name}")
         
-        # 最小化してクリック実行
-        self.root.iconify()
+        # クリック実行
         thread = threading.Thread(target=click_task)
         thread.daemon = True
         thread.start()
-        
-        # 完了後に復元
-        self.root.after(2000, self.root.deiconify)
     
     def run(self):
         """アプリケーション実行"""
