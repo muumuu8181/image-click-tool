@@ -1,6 +1,12 @@
-# 画像クリックツール v0.15
+# 🖱️ 画像クリックツール
+
+[![GitHub release](https://img.shields.io/github/v/release/muumuu8181/image-click-tool)](https://github.com/muumuu8181/image-click-tool/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.x](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/downloads/)
 
 スクリーンショットを撮影して、画面上の特定の画像を自動でクリックできるPython製GUIツールです。
+
+**🎯 現在のバージョン：** v0.15.0 (config.jsonで管理)
 
 ## 🚀 主な機能
 
@@ -24,7 +30,8 @@
 
 ```
 image-click-tool/
-├── gui_app_v0.15.py          # メインアプリケーション
+├── gui_app.py               # メインアプリケーション
+├── config.json              # アプリ設定（バージョン情報含む）
 ├── image_clicker.py          # 画像クリック処理
 ├── images/                   # スクリーンショット保存フォルダ
 │   ├── target.png
@@ -47,7 +54,7 @@ pip install pyautogui pillow opencv-python
 
 ### 起動方法
 ```bash
-python gui_app_v0.15.py
+python gui_app.py
 ```
 
 ## 📖 使い方
@@ -136,13 +143,16 @@ python gui_app_v0.15.py
 
 ## 🔧 開発情報
 
-### バージョン履歴
-- **v0.15**: ワークフロー名前入力、自動保存、フォルダ整理
-- **v0.14**: ワークフロー簡素化（スクショ→自動でクリック追加）
-- **v0.13**: タブ内完結、改行修正
-- **v0.12**: 色分けタブ、詳細説明追加
-- **v0.11**: 複数選択、ワークフロー記録機能
-- **v0.1**: 基本機能（スクショ、クリック）
+### バージョン管理
+バージョン情報は `config.json` で管理されています。Gitのタグでもバージョンを管理し、適切な履歴を保持しています。
+
+#### バージョン履歴 (config.jsonより)
+- **v0.15.0**: ワークフロー名前入力、自動保存、フォルダ整理
+- **v0.14.0**: ワークフロー簡素化（スクショ→自動でクリック追加）
+- **v0.13.0**: タブ内完結、改行修正
+- **v0.12.0**: 色分けタブ、詳細説明追加
+- **v0.11.0**: 複数選択、ワークフロー記録機能
+- **v0.1.0**: 基本機能（スクショ、クリック）
 
 ### 使用技術
 - **Python 3.x**

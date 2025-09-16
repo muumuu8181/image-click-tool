@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-画像クリックツール GUI版 v0.14
-ワークフロー簡素化：スクショ→自動的にクリック操作も追加
+画像クリックツール GUI版
+設定はconfig.jsonから読み込み
 """
 
 import tkinter as tk
@@ -15,6 +15,37 @@ import threading
 import time
 import json
 from datetime import datetime
+
+# アプリ設定を読み込み
+def load_config():
+    """config.jsonから設定を読み込み"""
+    try:
+        config_path = Path(__file__).parent / "config.json"
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"設定ファイル読み込みエラー: {e}")
+        # デフォルト設定
+        return {
+            "app": {
+                "name": "画像クリックツール",
+                "version": "0.15.0",
+                "description": "スクリーンショット撮影、画像認識、自動クリック、ワークフロー記録機能付きPython GUI アプリ"
+            },
+            "settings": {
+                "default_confidence": 0.8,
+                "default_timeout": 10,
+                "screenshot_delay": 3,
+                "max_selections": 8
+            },
+            "folders": {
+                "images": "images",
+                "workflows": "workflows"
+            }
+        }
+
+# 設定を読み込み
+CONFIG = load_config()
 
 class SingleScreenshotSelector:
     """単一範囲選択用スクリーンショットセレクター"""
@@ -48,14 +79,14 @@ class SingleScreenshotSelector:
         
         # 説明テキスト
         self.canvas.create_text(
-            screenshot.width // 2, 30,
+            self.screenshot.width // 2, 30,
             text="ドラッグして範囲を選択 (ESCでキャンセル)",
-            fill="white", font=("Arial", 16, "bold")
+            fill="white", font=("Arial", 22, "bold")
         )
         self.canvas.create_text(
-            screenshot.width // 2, 32,
+            self.screenshot.width // 2, 32,
             text="ドラッグして範囲を選択 (ESCでキャンセル)",
-            fill="black", font=("Arial", 16, "bold")
+            fill="black", font=("Arial", 22, "bold")
         )
     
     def on_press(self, event):
@@ -157,12 +188,12 @@ class MultiScreenshotSelector:
         # 新しいテキストを表示
         self.canvas.create_text(
             self.screenshot.width // 2, 30,
-            text=text, fill="white", font=("Arial", 14, "bold"),
+            text=text, fill="white", font=("Arial", 20, "bold"),
             tags="instruction"
         )
         self.canvas.create_text(
             self.screenshot.width // 2, 32,
-            text=text, fill="black", font=("Arial", 14, "bold"),
+            text=text, fill="black", font=("Arial", 20, "bold"),
             tags="instruction"
         )
     
@@ -236,12 +267,14 @@ class WorkflowRecorder:
         self.workflow = []
         self.is_recording = False
         self.current_step = 0
+        self.workflow_name = ""
         
-    def start_recording(self):
+    def start_recording(self, workflow_name=""):
         """記録開始"""
         self.workflow = []
         self.is_recording = True
         self.current_step = 0
+        self.workflow_name = workflow_name or f"workflow_{int(time.time())}"
         
     def add_step(self, action_type, data):
         """ステップを追加"""
@@ -258,24 +291,49 @@ class WorkflowRecorder:
         """記録停止"""
         self.is_recording = False
         
-    def save_workflow(self, filename):
+    def save_workflow(self, filename=None):
         """ワークフローを保存"""
+        if not filename:
+            # 自動保存用のファイル名を生成
+            workflows_dir = Path("workflows")
+            workflows_dir.mkdir(exist_ok=True)
+            filename = workflows_dir / f"{self.workflow_name}.json"
+        
+        # ワークフローメタ情報を追加
+        workflow_data = {
+            'name': self.workflow_name,
+            'created': datetime.now().isoformat(),
+            'steps_count': len(self.workflow),
+            'workflow': self.workflow
+        }
+        
         with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(self.workflow, f, ensure_ascii=False, indent=2)
+            json.dump(workflow_data, f, ensure_ascii=False, indent=2)
+        
+        return filename
             
     def load_workflow(self, filename):
         """ワークフローを読み込み"""
         with open(filename, 'r', encoding='utf-8') as f:
-            self.workflow = json.load(f)
+            data = json.load(f)
+            
+        # 新形式の場合
+        if 'workflow' in data:
+            self.workflow_name = data.get('name', 'loaded_workflow')
+            self.workflow = data['workflow']
+        else:
+            # 旧形式の場合
+            self.workflow = data
+            self.workflow_name = Path(filename).stem
 
 
-class ImageClickerGUIv014:
-    """メインGUIアプリケーション v0.14"""
+class ImageClickerGUIv015:
+    """メインGUIアプリケーション v0.15"""
     
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("画像クリックツール v0.14")
-        self.root.geometry("900x750")
+        self.root.title(f"{CONFIG['app']['name']} v{CONFIG['app']['version']}")
+        self.root.geometry("1260x1050")
         
         # ImageClickerインスタンス
         self.clicker = ImageClicker(confidence=0.8)
@@ -286,14 +344,22 @@ class ImageClickerGUIv014:
         # ワークフローレコーダー
         self.recorder = WorkflowRecorder(self)
         
-        # ワークフロー用の画像リスト
-        self.workflow_images = []
+        # ディレクトリを作成
+        self.setup_directories()
         
         # カスタムスタイル
         self.setup_styles()
         self.setup_ui()
         self.refresh_image_list()
-        self.refresh_workflow_images()
+    
+    def setup_directories(self):
+        """ディレクトリ構造をセットアップ"""
+        # imagesディレクトリ
+        self.clicker.images_dir.mkdir(exist_ok=True)
+        
+        # workflowsディレクトリ
+        self.workflows_dir = Path("workflows")
+        self.workflows_dir.mkdir(exist_ok=True)
     
     def setup_styles(self):
         """カスタムスタイル設定"""
@@ -341,7 +407,7 @@ class ImageClickerGUIv014:
         info_frame = ttk.LabelFrame(parent, text="📋 基本機能の使い方", padding="10")
         info_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        info_text = tk.Text(info_frame, height=4, wrap=tk.WORD)
+        info_text = tk.Text(info_frame, height=6, wrap=tk.WORD)
         info_text.pack(fill=tk.X)
         info_text.insert(tk.END, "【STEP1】 スクショボタンをクリック\n")
         info_text.insert(tk.END, "【STEP2】 3秒後に撮影される\n")
@@ -357,7 +423,7 @@ class ImageClickerGUIv014:
             screenshot_frame,
             text="📷 スクリーンショットを撮る",
             command=self.take_screenshot,
-            width=30
+            width=42
         ).pack(side=tk.LEFT, padx=5)
         
         ttk.Label(screenshot_frame, text="※ 3秒後に撮影 → ドラッグで赤枠選択", foreground="red").pack(side=tk.LEFT, padx=10)
@@ -370,7 +436,7 @@ class ImageClickerGUIv014:
         scrollbar = ttk.Scrollbar(list_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=8)
+        self.listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=11)
         self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.listbox.yview)
         
@@ -382,14 +448,14 @@ class ImageClickerGUIv014:
             list_buttons,
             text="🔄 更新",
             command=self.refresh_image_list,
-            width=10
+            width=14
         ).pack(side=tk.LEFT, padx=2)
         
         ttk.Button(
             list_buttons,
             text="🗑️ 削除",
             command=self.delete_image,
-            width=10
+            width=14
         ).pack(side=tk.LEFT, padx=2)
         
         # クリック機能
@@ -420,7 +486,7 @@ class ImageClickerGUIv014:
             click_frame,
             text="🖱️ 選択した画像をクリック",
             command=self.click_selected_image,
-            width=30
+            width=42
         )
         click_button.grid(row=1, column=0, columnspan=3, pady=10)
     
@@ -430,7 +496,7 @@ class ImageClickerGUIv014:
         info_frame = ttk.LabelFrame(parent, text="📋 複数選択の使い方", padding="10")
         info_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        info_text = tk.Text(info_frame, height=5, wrap=tk.WORD)
+        info_text = tk.Text(info_frame, height=7, wrap=tk.WORD)
         info_text.pack(fill=tk.X)
         info_text.insert(tk.END, "【STEP1】 選択数とベース名を設定\n")
         info_text.insert(tk.END, "【STEP2】 複数範囲選択ボタンをクリック\n") 
@@ -451,7 +517,7 @@ class ImageClickerGUIv014:
             from_=2,
             to=8,
             textvariable=self.multi_count_var,
-            width=10
+            width=14
         )
         multi_spinbox.grid(row=0, column=1, padx=5)
         
@@ -466,14 +532,14 @@ class ImageClickerGUIv014:
             settings_frame,
             text="📷 複数範囲を選択して保存",
             command=self.take_multiple_screenshots,
-            width=30
+            width=42
         ).grid(row=1, column=0, columnspan=4, pady=10)
         
         # 結果表示
         result_frame = ttk.LabelFrame(parent, text="📋 選択結果", padding="10")
         result_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        self.multi_result_text = scrolledtext.ScrolledText(result_frame, height=10, width=50)
+        self.multi_result_text = scrolledtext.ScrolledText(result_frame, height=14, width=70)
         self.multi_result_text.pack(fill=tk.BOTH, expand=True)
     
     def setup_workflow_tab(self, parent):
@@ -494,13 +560,25 @@ class ImageClickerGUIv014:
         steps_frame = ttk.LabelFrame(parent, text="📝 操作手順（超シンプル）", padding="10")
         steps_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        steps_text = tk.Text(steps_frame, height=4, wrap=tk.WORD, background="#ffffcc")
+        steps_text = tk.Text(steps_frame, height=6, wrap=tk.WORD, background="#ffffcc")
         steps_text.pack(fill=tk.X)
-        steps_text.insert(tk.END, "【STEP1】 記録開始をクリック\n")
-        steps_text.insert(tk.END, "【STEP2】 📸スクショで1つ目の画像（自動でクリック操作も追加）\n")
-        steps_text.insert(tk.END, "【STEP3】 必要に応じて⏸️待機を追加、📸スクショで2つ目...\n")
-        steps_text.insert(tk.END, "【STEP4】 記録停止→▶️実行で撮った順番に自動クリック！")
+        steps_text.insert(tk.END, "【STEP1】 ワークフロー名を入力して記録開始\n")
+        steps_text.insert(tk.END, "【STEP2】 📸スクショ＋クリックで1つ目の画像（自動でクリック操作も追加）\n")
+        steps_text.insert(tk.END, "【STEP3】 必要に応じて⏸️待機を追加、📸スクショ＋クリックで2つ目...\n")
+        steps_text.insert(tk.END, "【STEP4】 記録停止で自動保存→▶️実行で撮った順番に自動クリック！")
         steps_text.config(state=tk.DISABLED)
+        
+        # ワークフロー名前設定
+        name_frame = ttk.LabelFrame(parent, text="📝 ワークフロー名前", padding="10")
+        name_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Label(name_frame, text="ワークフロー名:").pack(side=tk.LEFT, padx=5)
+        
+        self.workflow_name_var = tk.StringVar(value="")
+        self.workflow_name_entry = ttk.Entry(name_frame, textvariable=self.workflow_name_var, width=30)
+        self.workflow_name_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        
+        ttk.Label(name_frame, text="※空白の場合は自動命名", foreground="gray").pack(side=tk.LEFT, padx=10)
         
         # コントロールフレーム
         control_frame = ttk.LabelFrame(parent, text="🎬 ワークフロー記録", padding="10")
@@ -510,7 +588,7 @@ class ImageClickerGUIv014:
             control_frame,
             text="⏺️ 記録開始",
             command=self.toggle_recording,
-            width=15
+            width=21
         )
         self.record_button.grid(row=0, column=0, padx=5)
         
@@ -518,7 +596,7 @@ class ImageClickerGUIv014:
             control_frame,
             text="📸 スクショ＋クリック",
             command=self.workflow_screenshot_and_click,
-            width=18
+            width=25
         ).grid(row=0, column=1, padx=5)
         
         ttk.Label(control_frame, text="待機時間(秒):").grid(row=1, column=0, padx=5, pady=5)
@@ -530,7 +608,7 @@ class ImageClickerGUIv014:
             to=10.0,
             increment=0.5,
             textvariable=self.wait_time_var,
-            width=10
+            width=14
         )
         wait_spinbox.grid(row=1, column=1, padx=5, pady=5)
         
@@ -538,14 +616,37 @@ class ImageClickerGUIv014:
             control_frame,
             text="⏸️ 待機追加",
             command=self.add_workflow_wait,
-            width=15
+            width=21
         ).grid(row=1, column=2, padx=5, pady=5)
+        
+        # ワークフロー管理
+        management_frame = ttk.LabelFrame(parent, text="💾 ワークフロー管理", padding="10")
+        management_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # 保存済みワークフローリスト
+        saved_frame = ttk.Frame(management_frame)
+        saved_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(saved_frame, text="保存済み:").pack(side=tk.LEFT)
+        
+        self.saved_workflows_var = tk.StringVar()
+        self.saved_workflows_combo = ttk.Combobox(saved_frame, textvariable=self.saved_workflows_var, width=30, state="readonly")
+        self.saved_workflows_combo.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        
+        ttk.Button(saved_frame, text="📁 読込", command=self.load_saved_workflow, width=10).pack(side=tk.LEFT, padx=2)
+        
+        # 管理ボタン
+        mgmt_buttons = ttk.Frame(management_frame)
+        mgmt_buttons.pack(fill=tk.X, pady=5)
+        
+        ttk.Button(mgmt_buttons, text="🔄 更新", command=self.refresh_saved_workflows, width=10).pack(side=tk.LEFT, padx=2)
+        ttk.Button(mgmt_buttons, text="📥 外部読込", command=self.load_external_workflow, width=12).pack(side=tk.LEFT, padx=2)
         
         # ワークフロー表示
         workflow_frame = ttk.LabelFrame(parent, text="📋 記録されたワークフロー", padding="10")
         workflow_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        self.workflow_text = scrolledtext.ScrolledText(workflow_frame, height=8, width=50)
+        self.workflow_text = scrolledtext.ScrolledText(workflow_frame, height=11, width=70)
         self.workflow_text.pack(fill=tk.BOTH, expand=True)
         
         # 実行ボタン
@@ -556,22 +657,11 @@ class ImageClickerGUIv014:
             execute_frame,
             text="▶️ ワークフロー実行",
             command=self.execute_workflow,
-            width=20
+            width=28
         ).pack(side=tk.LEFT, padx=5)
         
-        ttk.Button(
-            execute_frame,
-            text="💾 保存",
-            command=self.save_workflow,
-            width=10
-        ).pack(side=tk.LEFT, padx=5)
-        
-        ttk.Button(
-            execute_frame,
-            text="📁 読込",
-            command=self.load_workflow,
-            width=10
-        ).pack(side=tk.LEFT, padx=5)
+        # 初期化
+        self.refresh_saved_workflows()
     
     def update_confidence_label(self, value):
         """信頼度ラベル更新"""
@@ -604,7 +694,7 @@ class ImageClickerGUIv014:
             # ファイル名入力ダイアログ
             dialog = tk.Toplevel(self.root)
             dialog.title("保存")
-            dialog.geometry("300x100")
+            dialog.geometry("420x140")
             
             ttk.Label(dialog, text="ファイル名:").pack(pady=5)
             
@@ -625,7 +715,6 @@ class ImageClickerGUIv014:
                     
                     self.status_var.set(f"保存しました: {filename}")
                     self.refresh_image_list()
-                    self.refresh_workflow_images()
                     dialog.destroy()
             
             ttk.Button(dialog, text="保存", command=save).pack(pady=5)
@@ -685,7 +774,6 @@ class ImageClickerGUIv014:
             self.workflow_text.insert(tk.END, f"[{self.recorder.current_step-2}] 📸 撮影: {filename}\n")
             self.workflow_text.insert(tk.END, f"[{self.recorder.current_step-1}] 🖱️ クリック: {filename}\n")
             
-            self.refresh_workflow_images()
             self.status_var.set(f"✅ ワークフローに追加: 撮影→クリック {filename}")
     
     def take_multiple_screenshots(self):
@@ -735,23 +823,35 @@ class ImageClickerGUIv014:
             
             self.status_var.set(f"✅ {len(selections)}個の画像を保存しました")
             self.refresh_image_list()
-            self.refresh_workflow_images()
         else:
             self.status_var.set("選択がキャンセルされました")
     
     def toggle_recording(self):
         """記録の開始/停止"""
         if not self.recorder.is_recording:
-            self.recorder.start_recording()
+            # ワークフロー名を取得（空白の場合はデフォルト名）
+            workflow_name = self.workflow_name_var.get().strip()
+            if not workflow_name:
+                workflow_name = f"workflow_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            self.recorder.start_recording(workflow_name)
             self.record_button.config(text="⏹️ 記録停止")
             self.workflow_text.delete(1.0, tk.END)
-            self.workflow_text.insert(tk.END, "🔴 記録開始...\n")
+            self.workflow_text.insert(tk.END, f"🔴 記録開始... ワークフロー名: {workflow_name}\n")
             self.workflow_text.insert(tk.END, "次は「📸 スクショ＋クリック」をクリックしてください\n")
-            self.status_var.set("🔴 ワークフロー記録中... 📸スクショ＋クリックをクリックしてください")
+            self.status_var.set(f"🔴 ワークフロー記録中（{workflow_name}）... 📸スクショ＋クリックをクリックしてください")
         else:
             self.recorder.stop_recording()
             self.record_button.config(text="⏺️ 記録開始")
-            self.status_var.set("記録を停止しました")
+            
+            # 自動保存
+            if self.recorder.workflow:
+                saved_file = self.recorder.save_workflow()
+                self.status_var.set(f"記録停止＆自動保存完了: {saved_file.name}")
+                self.refresh_saved_workflows()
+            else:
+                self.status_var.set("記録を停止しました（保存なし）")
+            
             self.update_workflow_display()
     
     def add_workflow_wait(self):
@@ -770,12 +870,54 @@ class ImageClickerGUIv014:
         self.workflow_text.insert(tk.END, f"[{self.recorder.current_step-1}] ⏸️ 待機: {wait_time}秒\n")
         self.status_var.set(f"✅ ワークフローに追加: 待機 {wait_time}秒")
     
+    def refresh_saved_workflows(self):
+        """保存済みワークフローリストを更新"""
+        workflow_files = list(self.workflows_dir.glob("*.json"))
+        workflow_names = [f.stem for f in sorted(workflow_files)]
+        
+        self.saved_workflows_combo['values'] = workflow_names
+        if workflow_names and not self.saved_workflows_var.get():
+            self.saved_workflows_combo.current(0)
+    
+    def load_saved_workflow(self):
+        """保存済みワークフローを読み込み"""
+        workflow_name = self.saved_workflows_var.get()
+        if not workflow_name:
+            messagebox.showwarning("警告", "ワークフローを選択してください")
+            return
+        
+        workflow_file = self.workflows_dir / f"{workflow_name}.json"
+        if workflow_file.exists():
+            self.recorder.load_workflow(workflow_file)
+            self.workflow_name_var.set(self.recorder.workflow_name)
+            self.update_workflow_display()
+            self.status_var.set(f"✅ ワークフローを読み込みました: {workflow_name}")
+        else:
+            messagebox.showerror("エラー", f"ファイルが見つかりません: {workflow_file}")
+    
+    def load_external_workflow(self):
+        """外部ワークフローを読み込み"""
+        filename = filedialog.askopenfilename(
+            title="ワークフローファイルを選択",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        
+        if filename:
+            self.recorder.load_workflow(filename)
+            self.workflow_name_var.set(self.recorder.workflow_name)
+            self.update_workflow_display()
+            self.refresh_saved_workflows()
+            messagebox.showinfo("成功", f"ワークフローを読み込みました: {Path(filename).name}")
+    
     def update_workflow_display(self):
         """ワークフロー表示を更新"""
         self.workflow_text.delete(1.0, tk.END)
         if not self.recorder.workflow:
             self.workflow_text.insert(tk.END, "まだワークフローが記録されていません\n")
             return
+            
+        self.workflow_text.insert(tk.END, f"ワークフロー名: {self.recorder.workflow_name}\n")
+        self.workflow_text.insert(tk.END, f"ステップ数: {len(self.recorder.workflow)}\n\n")
             
         for step in self.recorder.workflow:
             if step['type'] == 'screenshot':
@@ -795,11 +937,11 @@ class ImageClickerGUIv014:
             messagebox.showwarning("警告", "実行するワークフローがありません")
             return
         
-        result = messagebox.askyesno("確認", f"ワークフロー（{len(self.recorder.workflow)}ステップ）を実行しますか？\nウィンドウが最小化され、自動操作が始まります。")
+        result = messagebox.askyesno("確認", f"ワークフロー「{self.recorder.workflow_name}」\n（{len(self.recorder.workflow)}ステップ）を実行しますか？\n\nウィンドウが最小化され、自動操作が始まります。")
         if not result:
             return
         
-        self.status_var.set("🚀 ワークフロー実行中...")
+        self.status_var.set(f"🚀 ワークフロー「{self.recorder.workflow_name}」実行中...")
         self.root.update()
         
         # 最小化
@@ -826,38 +968,12 @@ class ImageClickerGUIv014:
             
             # 完了
             self.root.deiconify()
-            self.status_var.set("✅ ワークフロー実行完了！")
+            self.status_var.set(f"✅ ワークフロー「{self.recorder.workflow_name}」実行完了！")
         
         # 別スレッドで実行
         thread = threading.Thread(target=execute_task)
         thread.daemon = True
         thread.start()
-    
-    def save_workflow(self):
-        """ワークフローを保存"""
-        if not self.recorder.workflow:
-            messagebox.showwarning("警告", "保存するワークフローがありません")
-            return
-        
-        filename = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if filename:
-            self.recorder.save_workflow(filename)
-            messagebox.showinfo("成功", f"ワークフローを保存しました: {filename}")
-    
-    def load_workflow(self):
-        """ワークフローを読み込み"""
-        filename = filedialog.askopenfilename(
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if filename:
-            self.recorder.load_workflow(filename)
-            self.update_workflow_display()
-            messagebox.showinfo("成功", f"ワークフローを読み込みました: {filename}")
     
     def refresh_image_list(self):
         """画像リスト更新"""
@@ -874,11 +990,6 @@ class ImageClickerGUIv014:
         if not self.recorder.is_recording:
             self.status_var.set(f"📁 {len(self.image_files)}個の画像")
     
-    def refresh_workflow_images(self):
-        """ワークフロー用画像リスト更新"""
-        # 基本機能と同じ画像を使用するため、特別な処理は不要
-        pass
-    
     def delete_image(self):
         """選択した画像を削除"""
         selection = self.listbox.curselection()
@@ -890,7 +1001,6 @@ class ImageClickerGUIv014:
                 try:
                     image_file.unlink()
                     self.refresh_image_list()
-                    self.refresh_workflow_images()
                     self.status_var.set(f"🗑️ 削除しました: {image_file.name}")
                 except Exception as e:
                     messagebox.showerror("エラー", f"削除に失敗しました: {e}")
@@ -923,14 +1033,10 @@ class ImageClickerGUIv014:
             else:
                 self.status_var.set(f"❌ 画像が見つかりません: {image_name}")
         
-        # 最小化してクリック実行
-        self.root.iconify()
+        # クリック実行
         thread = threading.Thread(target=click_task)
         thread.daemon = True
         thread.start()
-        
-        # 完了後に復元
-        self.root.after(2000, self.root.deiconify)
     
     def run(self):
         """アプリケーション実行"""
@@ -938,5 +1044,5 @@ class ImageClickerGUIv014:
 
 
 if __name__ == "__main__":
-    app = ImageClickerGUIv014()
+    app = ImageClickerGUIv015()
     app.run()
